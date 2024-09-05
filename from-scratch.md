@@ -181,8 +181,8 @@ To make it more secure, one of the ways is to make the token sender constrained.
         * Algorithm: RS256
         * Key ID: SHA-256
         * Show X.509: Yes
-    * Copy the Public Key (json format) and save it to `assets\dpop_public_key.json`
-    * Copy the Private Key (X.509 PEM format) and save it to `assets\dpop_private_key.pem`
+    * Copy the Public Key (json format) and save it to `assets/dpop_public_key.json`
+    * Copy the Private Key (X.509 PEM format) and save it to `assets/dpop_private_key.pem`
 * In `.env` file, add the new file paths
     ```
     ....
@@ -324,6 +324,7 @@ To make it more secure, one of the ways is to make the token sender constrained.
     * Voila! List of users are printed.
 
 **Next Steps**
+* Completed project can be downloaded from the github link
 * Try using different Okta API scopes and experiment with different endpoints
 * Make sure you give permissions to your service app by assigning appropriate permissions
 * You can implement similar protection to your own resource server endpoints to improve security
