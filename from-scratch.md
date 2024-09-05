@@ -26,7 +26,7 @@ You'll need the following tools:
 **Setup Okta application**
 * Create an `API service app` and save *Client ID*
 * Change app *Client authentication* to `Public Key / Private Key`
-* Add a key in *PUBLIC KEYS* section and save private key as `cc_private_key.pem` and click *Save*
+* Add a key in *PUBLIC KEYS* section and save private key (PEM format)  as `cc_private_key.pem` and click *Save*
 * In *General Settings* section, edit *Proof of possesion* > *Require Demonstrating Proof of Possession (DPoP) header in token requests* to `false`
 * Under *Okta API Scopes* tab, grant `okta.users.read` scope
 * Under *Admin Roles* tab, assign `Read-only Administrator`
@@ -182,7 +182,7 @@ To make it more secure, one of the ways is to make the token sender constrained.
         * Key ID: SHA-256
         * Show X.509: Yes
     * Copy the Public Key (json format) and save it to `assets/dpop_public_key.json`
-    * Copy the Private Key (X.509 PEM format) and save it to `assets/dpop_private_key.pem`
+    * Copy the Private Key (X.509 PEM format) (**Do not click Copy to Clipboard. This will copy as single line which will not work with this following steps. Instead copy value manually and save it**) and save it to `assets/dpop_private_key.pem`
 * In `.env` file, add the new file paths
     ```
     ....
@@ -213,6 +213,7 @@ To make it more secure, one of the ways is to make the token sender constrained.
         ```javascript
         const oktaHelper = {
             .....
+            // Add as the last attribute of oktaHelper object
             generateDpopToken: function(htm, htu, additionalClaims) {
                 let privateKey = this.dpopPrivateKey || fs.readFileSync(this.dpopPrivateKeyFile);
                 let publicKey = this.dpopPublicKey || fs.readFileSync(this.dpopPublicKeyFile)
@@ -236,15 +237,18 @@ To make it more secure, one of the ways is to make the token sender constrained.
         };
         ```
 
-    * Next add DPoP proof to token request header
+    * Next add DPoP proof token to `tokenRequest` method parameters and also as token request header
         ```javascript
+        // Add dpopToken as a new parameter
         tokenRequest: function(ccToken, dpopToken) { // generate token request using client_credentials grant type
             return fetch(this.getTokenEndpoint(), {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    // New Code - Start
                     DPoP: dpopToken
+                    // New Code - End
                 },
                 ...
             });
@@ -266,11 +270,19 @@ To make it more secure, one of the ways is to make the token sender constrained.
                 console.log('Valid access token not found. Retrieving new token...\n');
                 let ccToken = oktaHelper.generateCcToken();
                 console.log(`Using Private Key JWT: ${ccToken}\n`);
+
+                // New Code - Start
                 let dpopToken = oktaHelper.generateDpopToken('POST', oktaHelper.getTokenEndpoint());
                 console.log(`Using DPoP proof: ${dpopToken}\n`);
+                // New Code - End
+
                 console.log(`Making token call to ${oktaHelper.getTokenEndpoint()}`);
+
+                // Update following line by adding dpopToken parameter
                 let tokenResp = await oktaHelper.tokenRequest(ccToken, dpopToken);
                 let respBody = await tokenResp.json();
+
+                // New Code - Start
                 if(tokenResp.status != 400 || (respBody && respBody.error != 'use_dpop_nonce')) {
                     console.log('Authentication Failed');
                     console.log(respBody);
@@ -283,6 +295,8 @@ To make it more secure, one of the ways is to make the token sender constrained.
                 console.log(`Retrying token call to ${oktaHelper.getTokenEndpoint()} with DPoP nonce ${dpopNonce}`);
                 tokenResp = await oktaHelper.tokenRequest(ccToken, dpopToken);
                 respBody = await tokenResp.json();
+                // New Code - End
+
                 oktaHelper.accessToken = respBody['access_token'];
                 console.log(`Successfully retrieved access token: ${oktaHelper.accessToken}\n`);
             }
@@ -290,12 +304,13 @@ To make it more secure, one of the ways is to make the token sender constrained.
         }
         ```
 
-    * Now test the steps by running `npm start` in the terminal. OOPS! You would have received an access token but call to users api failed. This is because we did not include DPoP proof. With DPoP enabled, we have to include a new DPoP proof for every call. This prevents malicious actors from reusing stolen access tokens. Let's add some code to include DPoP proof.
+    * Make sure to enable DPoP in your Okta service application before proceeding. Now test the steps by running `npm start` in the terminal. OOPS! You would have received an access token but call to users api failed with 400 status. This is because we did not include DPoP proof. With DPoP enabled, we have to include a new DPoP proof for every call. This prevents malicious actors from reusing stolen access tokens. Let's add some code to include DPoP proof.
 
     * Add a helper method to generate hash of access token or `ath` value.
         ```javascript
         const oktaHelper = {
             .....,
+            // Add as the last attribute of oktaHelper object
             generateAth: function(token) {
                 return crypto.createHash('sha256').update(token).digest('base64').replace(/\//g, '_').replace(/\+/g, '-').replace(/\=/g, '');
             }
@@ -305,8 +320,13 @@ To make it more secure, one of the ways is to make the token sender constrained.
         ```javascript
         managementApiCall: function (relativeUri, httpMethod, headers, body) { // Construct Okta management API calls 
             let uri = `${oktaHelper.oktaDomain}${relativeUri}`;
+
+            // New Code - Start
             let ath = oktaHelper.generateAth(oktaHelper.accessToken);
             let dpopToken = oktaHelper.generateDpopToken(httpMethod, uri, {ath});
+            // New Code - End
+
+            // Update reqHeaders object
             let reqHeaders = {
                 'Accept': 'application/json',
                 'Authorization': `DPoP ${oktaHelper.accessToken}`,
@@ -321,13 +341,14 @@ To make it more secure, one of the ways is to make the token sender constrained.
         }
         ```
 
+    * Run `npm start`
     * Voila! List of users are printed.
 
 **Next Steps**
 * Completed project can be downloaded from the github link
 * Try using different Okta API scopes and experiment with different endpoints
-* Make sure you give permissions to your service app by assigning appropriate permissions
-* You can implement similar protection to your own resource server endpoints to improve security
+* Make sure you give permissions to your service app by assigning appropriate Admin roles
+* You can implement similar protection to your own resource server endpoints using a custom authorization server and custom set of scopes to improve security
 
 ## Learn more about Okta Management API, DPoP, and OAuth 2.0
 

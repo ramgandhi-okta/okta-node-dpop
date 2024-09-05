@@ -12,10 +12,12 @@ This project can be used to connect to Okta management API endpoints with a DPoP
 
 ## Setup the project
 
+Clone or download this github repository
+
 **Setup Okta application**
 * Create an `API service app` and save *Client ID*
 * Change app *Client authentication* to `Public Key / Private Key`
-* Add a key in *PUBLIC KEYS* section and save private key in the following path in the project `assets/cc_private_key.pem` and click *Save*
+* Add a key in *PUBLIC KEYS* section and save private key (PEM format) in the following path in the project `assets/cc_private_key.pem` and click *Save*
 * In *General Settings* section, edit *Proof of possesion* > *Require Demonstrating Proof of Possession (DPoP) header in token requests* to `true`
 * Under *Okta API Scopes* tab, grant `okta.users.read` scope
 * Under *Admin Roles* tab, assign `Read-only Administrator`
@@ -29,12 +31,11 @@ This project can be used to connect to Okta management API endpoints with a DPoP
         * Key ID: SHA-256
         * Show X.509: Yes
     * Copy the Public Key (json format) and save it to `assets/dpop_public_key.json`
-    * Copy the Private Key (X.509 PEM format) and save it to `assets/dpop_private_key.pem`
+    * Copy the Private Key (X.509 PEM format) (**Do not click Copy to Clipboard. This will copy as single line which will not work with this following steps. Instead copy value manually and save it**) and save it to `assets/dpop_private_key.pem`
 
 **Add necessary dependencies**
-- Clone or download this github repository
-- Run `npm install`
-- Create `.env` file in project root directory and fill with the following,
+* Run `npm install`
+* Create `.env` file in project root directory and fill with the following,
 ```
 OKTA_ORG_URL=https://{{your-okta-domain}}
 OKTA_CLIENT_ID={{service-app-client-id}}
